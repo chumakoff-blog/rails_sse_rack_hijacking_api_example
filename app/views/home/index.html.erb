@@ -1,0 +1,82 @@
+<h1>Rails SSE example</h1>
+
+<p>
+  <b>Note:</b>
+  Your web browser probably has an upper limit on simultaneous active connections to the same server (usually in range of 4 to 6)
+</p>
+<br>
+
+<table width='100%'>
+  <tr>
+    <% @methods.each do |_, title| %>
+      <th><%= title %></th>
+    <% end %>
+  </tr>
+  <tr>
+    <% @methods.each do |path, _| %>
+      <td style="padding: 0">
+        <table width='100%'>
+          <tr>
+            <th>Progress</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+          <% 6.times do %>
+            <tr data-path=<%= path %>>
+              <td>
+                <span class="progress">0</span>%
+              </td>
+              <td class="status">Not started</td>
+              <td>
+                <button onclick="performTask(this)">Start</button>
+              </td>
+            </tr>
+          <% end %>
+        </table>      
+      </td>
+    <% end %>
+  </tr>
+</table>
+
+<script>
+  function performTask(button) {
+    var container = button.closest('tr');
+    var progressBlock = container.getElementsByClassName("progress")[0];
+    var statusBlock = container.getElementsByClassName("status")[0];
+    var path = container.dataset.path;
+
+    var eventCallback = function(progress) {
+      progressBlock.innerHTML = progress;
+    }
+
+    var completedCallback = function(progress) {
+      statusBlock.innerHTML = "Completed"
+      button.removeAttribute('disabled');      
+    }
+
+    button.setAttribute('disabled', true);
+    progressBlock.innerHTML = '0';
+    statusBlock.innerHTML = "In progress"
+
+    stream(path, eventCallback, completedCallback);
+  }
+
+  function stream(path, eventCallback, completedCallback) {
+    var source = new EventSource('/' + path);
+
+    source.addEventListener('taskProgress', function(e) {
+      var progress = JSON.parse(e.data).progress;
+      eventCallback(progress);
+
+      if (progress >= 100) {
+        source.close();
+        completedCallback();
+      }
+    });    
+  }
+</script>
+
+<style>
+  td {text-align: center;}
+  td, th {padding: 20px; border: 1px solid gray;}
+</style>
